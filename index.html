@@ -1,0 +1,87 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Push Notifications Example</title>
+</head>
+<body>
+    <h1>Push Notifications Example</h1>
+    
+    <button id="notifyButton">Send Notification to All Users</button>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const notifyButton = document.getElementById("notifyButton");
+
+            notifyButton.addEventListener("click", () => {
+                fetch("/send-notification", { method: "GET" })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log(data);
+                    })
+                    .catch(error => {
+                        console.error("Error sending notification:", error);
+                    });
+            });
+        });
+    </script>
+<script>
+const express = require("express");
+const webPush = require("web-push");
+const bodyParser = require("body-parser");
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+// Replace with your VAPID keys
+const vapidKeys = {
+    publicKey: "your_public_key_here",
+    privateKey: "your_private_key_here",
+};
+
+webPush.setVapidDetails(
+    "mailto:your_email@example.com",
+    vapidKeys.publicKey,
+    vapidKeys.privateKey
+);
+
+app.use(bodyParser.json());
+
+const subscriptions = [];
+
+app.post("/subscribe", (req, res) => {
+    const subscription = req.body;
+    subscriptions.push(subscription);
+    res.status(201).json({ message: "Subscription added" });
+});
+
+app.get("/send-notification", (req, res) => {
+    const notificationPayload = JSON.stringify({
+        title: "New Notification",
+        body: "Hello, world!",
+    });
+
+    Promise.all(
+        subscriptions.map(subscription => {
+            return webPush
+                .sendNotification(subscription, notificationPayload)
+                .catch(error => console.error("Error sending notification:", error));
+        })
+    )
+        .then(() => {
+            res.status(200).json({ message: "Notification sent successfully" });
+        })
+        .catch(error => {
+            console.error("Error sending notifications:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        });
+});
+
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+});
+</script>
+</body>
+</html>
